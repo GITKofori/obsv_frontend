@@ -84,6 +84,119 @@ export interface PmacSummary {
   setor_progress: { setor: string; total_medidas: number }[];
 }
 
+// ─── IoT Real-time types ──────────────────────────────────────────────────────
+
+export interface LeituraT1 {
+  Timestamp: string;
+  solo_vibracao_x: string | number;
+  solo_vibracao_y: string | number;
+  solo_vibracao_z: string | number;
+  solo_presenca_chuva: string | number;
+}
+
+export interface LeituraT2ArSolo {
+  Timestamp: string;
+  ar_temperatura: number;
+  ar_humidade: number;
+  ar_luz_solar: number;
+  ar_co2: number;
+  ar_intensidade_uv: number;
+  ar_indice_uv: number;
+  ar_pressao_atmosferica: number;
+  solo_temperatura: number;
+  solo_humidade: number;
+  solo_condutividade: number;
+  solo_ph: number;
+  solo_potassio: number;
+  solo_fosforo: number;
+  solo_azoto: number;
+  solo_quantidade_chuva: number;
+}
+
+export interface LeituraT2Agua {
+  Timestamp: string;
+  agua_cloro_residual: number;
+  agua_ph: number;
+  agua_turvacao: number;
+  agua_nivel: number;
+}
+
+export type LeituraT2 = LeituraT2ArSolo | LeituraT2Agua;
+
+export interface ParcelaState {
+  t1: LeituraT1 | null;
+  t2: LeituraT2 | null;
+}
+
+export interface IoTStreamState {
+  point1: ParcelaState;
+  point2: ParcelaState;
+  point3: ParcelaState;
+  connected: boolean;
+}
+
+export type AlertaOperador = '>' | '<' | '>=' | '<=' | '=';
+export type AlertaTipo = 'instant' | 'aggregated';
+export type AlertaFuncao = 'avg' | 'sum' | 'min' | 'max';
+
+export interface AlertaRegra {
+  id: number;
+  fk_user: string;
+  nome: string;
+  parcela: string;
+  topico: 't1' | 't2';
+  campo: string;
+  operador: AlertaOperador;
+  valor_threshold: number;
+  tipo: AlertaTipo;
+  funcao_agregacao: AlertaFuncao | null;
+  intervalo_minutos: number | null;
+  ativo: boolean;
+  criado_em: string;
+}
+
+export interface AlertaDisparado {
+  id: number;
+  fk_regra: number;
+  regra_nome: string;
+  operador: AlertaOperador;
+  valor_threshold: number;
+  parcela: string;
+  campo: string;
+  valor_medido: number;
+  disparado_em: string;
+  reconhecido: boolean;
+  reconhecido_em: string | null;
+  reconhecido_por: string | null;
+}
+
+export interface SSEAlertaEvent {
+  id: number;
+  regra: { id: number; nome: string };
+  parcela: string;
+  campo: string;
+  valor_medido: number;
+  valor_threshold: number;
+  operador: AlertaOperador;
+  disparado_em: string;
+}
+
+// ─── Historico ────────────────────────────────────────────────────────────────
+
+export interface LeituraHistorico {
+  parcela: string;
+  timestamp: string;
+  dados: Record<string, number>;
+}
+
+export interface StatsPoint {
+  periodo: string;
+  media: number;
+  minimo: number;
+  maximo: number;
+  contagem: number;
+}
+
 export interface ValidacaoPendentes {
   execucoes_pendentes: (Execucao & {
     indicador_nome: string;

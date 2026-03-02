@@ -5,6 +5,15 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Parse a timestamp that may be Unix epoch seconds (hardware) or an ISO string. */
+export function parseHardwareTimestamp(ts: string | number | null | undefined): Date | null {
+  if (ts == null) return null;
+  const n = Number(ts);
+  if (!isNaN(n) && n > 1_000_000_000) return new Date(n * 1000); // epoch seconds
+  const d = new Date(ts as string);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 export function formatBytes(
   bytes: number,
   opts: {

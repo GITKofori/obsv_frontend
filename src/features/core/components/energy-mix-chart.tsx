@@ -1,111 +1,133 @@
 'use client';
 
-import { PieChart, Pie, Cell } from 'recharts';
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from '@/components/ui/chart';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface EnergyMixChartProps {
-  data: { name: string; value: number }[];
+  data: { name: string; value: number | string }[];
 }
 
-const COLORS: Record<string, string> = {
-  eletricidade: 'hsl(217, 91%, 60%)',
-  gas: 'hsl(38, 92%, 50%)',
-  petroleo: 'hsl(0, 72%, 51%)',
-  biomassa: 'hsl(142, 71%, 45%)',
-  solar: 'hsl(48, 96%, 53%)',
-  outros: 'hsl(215, 14%, 60%)',
-};
+const PALETTE: { key: string; label: string; color: string }[] = [
+  { key: 'eletricidade', label: 'Eletricidade',  color: 'hsl(217, 91%, 60%)' },
+  { key: 'gas',         label: 'Gás Natural',    color: 'hsl(38, 92%, 50%)'  },
+  { key: 'petroleo',    label: 'Petróleo',        color: 'hsl(0, 72%, 51%)'   },
+  { key: 'biomassa',    label: 'Biomassa',        color: 'hsl(142, 71%, 45%)' },
+  { key: 'solar',       label: 'Solar',           color: 'hsl(48, 96%, 53%)'  },
+  { key: 'renovavel',   label: 'Renovável',       color: 'hsl(166, 60%, 45%)' },
+  { key: 'outros',      label: 'Outros',          color: 'hsl(215, 14%, 60%)' },
+];
 
-const LABELS: Record<string, string> = {
-  eletricidade: 'Eletricidade',
-  gas: 'Gás Natural',
-  petroleo: 'Petróleo',
-  biomassa: 'Biomassa',
-  solar: 'Solar',
-  outros: 'Outros',
-};
+const FALLBACK_COLORS = [
+  'hsl(217,91%,60%)', 'hsl(38,92%,50%)', 'hsl(0,72%,51%)',
+  'hsl(142,71%,45%)', 'hsl(48,96%,53%)', 'hsl(166,60%,45%)', 'hsl(215,14%,60%)',
+];
 
-function buildChartConfig(data: { name: string; value: number }[]): ChartConfig {
-  const config: ChartConfig = {};
-  for (const item of data) {
-    const key = item.name.toLowerCase();
-    config[key] = {
-      label: LABELS[key] || item.name,
-      color: COLORS[key] || 'hsl(215, 14%, 60%)',
-    };
-  }
-  return config;
+function resolveEntry(name: string, idx: number): { label: string; color: string } {
+  const normalized = name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  const match = PALETTE.find((p) => normalized.includes(p.key));
+  return match
+    ? { label: match.label, color: match.color }
+    : { label: name, color: FALLBACK_COLORS[idx % FALLBACK_COLORS.length] };
+}
+
+interface CustomLabelProps {
+  cx: number;
+  cy: number;
+  midAngle: number;
+  innerRadius: number;
+  outerRadius: number;
+  percent: number;
+}
+
+const RADIAN = Math.PI / 180;
+function CustomLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent }: CustomLabelProps) {
+  if (percent < 0.03) return null; // skip tiny slices
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  return (
+    <text
+      x={x}
+      y={y}
+      fill='white'
+      textAnchor='middle'
+      dominantBaseline='central'
+      fontSize={12}
+      fontWeight={600}
+    >
+      {`${(percent * 100).toFixed(1)}%`}
+    </text>
+  );
 }
 
 export function EnergyMixChart({ data }: EnergyMixChartProps) {
-  const chartConfig = buildChartConfig(data);
-  const total = data.reduce((sum, d) => sum + d.value, 0);
-
-  const chartData = data.map((d) => {
-    const key = d.name.toLowerCase();
-    return {
-      ...d,
-      fill: COLORS[key] || 'hsl(215, 14%, 60%)',
-      percentage: total > 0 ? ((d.value / total) * 100).toFixed(1) : '0',
-    };
+  // Ensure values are numbers — PostgreSQL COUNT(*) comes back as strings
+  const parsed = data.map((d, idx) => {
+    const { label, color } = resolveEntry(d.name, idx);
+    return { name: d.name, label, color, value: Number(d.value) };
   });
 
+  const total = parsed.reduce((sum, d) => sum + d.value, 0);
+
+  if (total === 0) {
+    return (
+      <p className='py-12 text-center text-sm text-muted-foreground'>
+        Sem dados disponíveis
+      </p>
+    );
+  }
+
   return (
-    <div>
-      <ChartContainer config={chartConfig} className='mx-auto aspect-square max-h-[300px]'>
+    <div className='space-y-2'>
+      <ResponsiveContainer width='100%' height={280}>
         <PieChart>
-          <ChartTooltip
-            content={
-              <ChartTooltipContent
-                nameKey='name'
-                formatter={(value, name) => {
-                  const item = chartData.find((d) => d.name === name);
-                  return `${Number(value).toLocaleString('pt-PT')} (${item?.percentage || 0}%)`;
-                }}
-              />
-            }
-          />
           <Pie
-            data={chartData}
+            data={parsed}
             dataKey='value'
-            nameKey='name'
+            nameKey='label'
             cx='50%'
             cy='50%'
             innerRadius={60}
-            outerRadius={110}
+            outerRadius={105}
             paddingAngle={2}
             strokeWidth={2}
             stroke='hsl(var(--background))'
+            labelLine={false}
+            label={(props) => <CustomLabel {...props} />}
           >
-            {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.fill} />
+            {parsed.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
           </Pie>
-        </PieChart>
-      </ChartContainer>
-
-      {/* Legend */}
-      <div className='mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2'>
-        {chartData.map((item) => {
-          const key = item.name.toLowerCase();
-          return (
-            <div key={key} className='flex items-center gap-1.5 text-xs'>
-              <div
-                className='h-2.5 w-2.5 rounded-sm'
-                style={{ backgroundColor: item.fill }}
-              />
-              <span className='text-muted-foreground'>
-                {LABELS[key] || item.name} ({item.percentage}%)
+          <Tooltip
+            formatter={(value: number, name: string) => [
+              `${Number(value).toLocaleString('pt-PT')} (${total > 0 ? ((value / total) * 100).toFixed(1) : 0}%)`,
+              name,
+            ]}
+            contentStyle={{
+              fontSize: 12,
+              borderRadius: '6px',
+              border: '1px solid hsl(var(--border))',
+              background: 'hsl(var(--card))',
+              color: 'hsl(var(--card-foreground))',
+            }}
+          />
+          <Legend
+            formatter={(value) => (
+              <span style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>
+                {value}
               </span>
-            </div>
-          );
-        })}
-      </div>
+            )}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+
+      {/* Total callout */}
+      <p className='text-center text-xs text-muted-foreground'>
+        Total: <span className='font-semibold text-foreground'>{total.toLocaleString('pt-PT')}</span> registos
+      </p>
     </div>
   );
 }
