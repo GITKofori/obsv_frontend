@@ -4,8 +4,8 @@ const nextConfig = {
     return [
       {
         source: '/api/protected/:path*',
-        destination: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/protected/:path*`,
-      },
+        destination: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/protected/:path*`
+      }
     ];
   },
   images: {
@@ -22,7 +22,8 @@ const nextConfig = {
       }
     ]
   },
-  transpilePackages: ['geist']
+  transpilePackages: ['geist'],
+  output: 'standalone'
 };
 
 module.exports = nextConfig;
