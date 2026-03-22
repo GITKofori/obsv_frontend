@@ -1,92 +1,27 @@
 'use client';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from '@/components/ui/chart';
-
-interface HistoricalChartProps {
-  data: { year: number; name: string; value: number }[];
+interface YearPoint {
+  year: number;
+  electricity_mwh: number | null;
+  gas_mwh: number | null;
+  oil_mwh: number | null;
 }
 
-const LINE_COLORS: Record<string, string> = {
-  eletricidade: 'hsl(217, 91%, 60%)',
-  gas: 'hsl(38, 92%, 50%)',
-  petroleo: 'hsl(0, 72%, 51%)',
-  biomassa: 'hsl(142, 71%, 45%)',
-  solar: 'hsl(48, 96%, 53%)',
-  outros: 'hsl(215, 14%, 60%)',
-};
-
-const LINE_LABELS: Record<string, string> = {
-  eletricidade: 'Eletricidade',
-  gas: 'Gás Natural',
-  petroleo: 'Petróleo',
-  biomassa: 'Biomassa',
-  solar: 'Solar',
-  outros: 'Outros',
-};
-
-export function HistoricalChart({ data }: HistoricalChartProps) {
-  // Pivot data: group by year, each energy type becomes a column
-  const yearMap = new Map<number, Record<string, number>>();
-  const energyTypes = new Set<string>();
-
-  for (const item of data) {
-    if (item.year < 2005) continue;
-    const key = item.name.toLowerCase();
-    energyTypes.add(key);
-    if (!yearMap.has(item.year)) {
-      yearMap.set(item.year, { year: item.year });
-    }
-    yearMap.get(item.year)![key] = item.value;
-  }
-
-  const chartData = Array.from(yearMap.values()).sort(
-    (a, b) => a.year - b.year
-  );
-  const types = Array.from(energyTypes);
-
-  const chartConfig: ChartConfig = {};
-  for (const type of types) {
-    chartConfig[type] = {
-      label: LINE_LABELS[type] || type,
-      color: LINE_COLORS[type] || 'hsl(215, 14%, 60%)',
-    };
-  }
-
+export function HistoricalChart({ data }: { data: YearPoint[] }) {
+  if (!data.length) return <p className='text-sm text-muted-foreground py-12 text-center'>Sem dados</p>;
   return (
-    <ChartContainer config={chartConfig} className='min-h-[350px] w-full'>
-      <LineChart
-        data={chartData}
-        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-      >
+    <ResponsiveContainer width='100%' height={320}>
+      <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
         <CartesianGrid strokeDasharray='3 3' className='stroke-muted' />
         <XAxis dataKey='year' className='text-xs' />
-        <YAxis
-          className='text-xs'
-          tickFormatter={(value) =>
-            value >= 1000 ? `${(value / 1000).toFixed(0)}k` : `${value}`
-          }
-        />
-        <ChartTooltip content={<ChartTooltipContent />} />
+        <YAxis tickFormatter={(v: number) => `${(v/1000).toFixed(0)}k`} className='text-xs' />
+        <Tooltip formatter={(v: number) => [`${v?.toLocaleString('pt-PT')} MWh`]} />
         <Legend />
-        {types.map((type) => (
-          <Line
-            key={type}
-            type='monotone'
-            dataKey={type}
-            name={LINE_LABELS[type] || type}
-            stroke={LINE_COLORS[type] || 'hsl(215, 14%, 60%)'}
-            strokeWidth={2}
-            dot={{ r: 3 }}
-            connectNulls
-          />
-        ))}
+        <Line type='monotone' dataKey='electricity_mwh' name='Eletricidade' stroke='#6366f1' strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
+        <Line type='monotone' dataKey='gas_mwh'         name='Gás Natural'  stroke='#10b981' strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
+        <Line type='monotone' dataKey='oil_mwh'         name='Petróleo'     stroke='#f59e0b' strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
       </LineChart>
-    </ChartContainer>
+    </ResponsiveContainer>
   );
 }
