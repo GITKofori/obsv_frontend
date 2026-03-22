@@ -29,10 +29,12 @@ export default function TrajetoriaPage() {
   const [core, setCore] = useState<CoreSummary | null>(null);
   const [pmac, setPmac] = useState<PmacProgress | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
+      setError(null);
       try {
         const supabase = createBrowserSupabase();
         const { data: { session } } = await supabase.auth.getSession();
@@ -42,12 +44,13 @@ export default function TrajetoriaPage() {
 
         const [coreRes, pmacRes] = await Promise.all([
           axios.get<CoreSummary>(`${BACKEND}/api/protected/core/summary${munParam}`, { headers }),
-          axios.get(`${BACKEND}/api/protected/dashboard-pmac/trajetoria${munParam}`, { headers }),
+          axios.get<{ progress: PmacProgress }>(`${BACKEND}/api/protected/dashboard-pmac/trajetoria${munParam}`, { headers }),
         ]);
         setCore(coreRes.data);
         setPmac(pmacRes.data.progress);
-      } catch (error) {
-        console.error('Error fetching trajetoria data:', error);
+      } catch (err) {
+        console.error('Error fetching trajetoria data:', err);
+        setError('Erro ao carregar dados. Tente novamente.');
       } finally {
         setLoading(false);
       }
@@ -73,6 +76,16 @@ export default function TrajetoriaPage() {
       <PageContainer>
         <div className='flex flex-1 items-center justify-center py-20'>
           <Loader2 className='h-8 w-8 animate-spin text-muted-foreground' />
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageContainer>
+        <div className='flex flex-1 items-center justify-center py-20'>
+          <p className='text-sm text-destructive'>{error}</p>
         </div>
       </PageContainer>
     );

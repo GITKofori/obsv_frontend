@@ -30,7 +30,7 @@ function yearToTco2(pt: YearPoint): number {
 }
 
 export function TrajectoryChart({ baseline2005, energyByYear }: TrajectoryChartProps) {
-  const base = baseline2005 || 280000;
+  const base = baseline2005 > 0 ? baseline2005 : 280000;
 
   // Real trajectory: one point per year we have data
   const realPoints: Record<string, number | null> = {};
