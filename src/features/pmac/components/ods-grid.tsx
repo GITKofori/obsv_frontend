@@ -34,18 +34,13 @@ const ODS_LABELS: Record<number, string> = {
 };
 
 export function OdsGrid({ data }: OdsGridProps) {
-  if (!data.length) {
-    return (
-      <p className='text-sm text-muted-foreground py-8 text-center'>
-        Sem dados ODS disponíveis.
-      </p>
-    );
-  }
+  const countById: Record<number, number> = {};
+  for (const d of data) countById[d.ods_id] = d.count;
 
-  const chartData = data.map((d) => ({
-    ods: `ODS ${d.ods_id}`,
-    count: d.count,
-    label: ODS_LABELS[d.ods_id] || `ODS ${d.ods_id}`,
+  const chartData = Object.entries(ODS_LABELS).map(([id, label]) => ({
+    ods: `ODS ${id}`,
+    count: countById[Number(id)] ?? 0,
+    label,
   }));
 
   return (
