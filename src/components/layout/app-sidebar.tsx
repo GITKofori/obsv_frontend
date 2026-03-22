@@ -47,6 +47,7 @@ import * as React from 'react';
 import { Icons } from '../icons';
 import { useAuth } from './providers';
 import { createBrowserSupabase } from '@/utils/supabase/client';
+import type { AppUserRole } from 'types/pmac';
 
 export const company = {
   name: 'Observatório do Clima',
@@ -55,7 +56,7 @@ export const company = {
 };
 
 export default function AppSidebar() {
-  const { user } = useAuth();
+  const { user, appUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { state, isMobile } = useSidebar();
@@ -105,6 +106,12 @@ export default function AppSidebar() {
     return 'CN';
   };
 
+  const filteredNavItems = navItems.filter((item) => {
+    if (!item.roles) return true;
+    if (!appUser) return false;
+    return item.roles.includes(appUser.role);
+  });
+
   // Avatar URL do user metadata (para OAuth providers como Google)
   const avatarUrl =
     user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
@@ -131,7 +138,7 @@ export default function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Overview</SidebarGroupLabel>
           <SidebarMenu>
-            {navItems.map((item) => {
+            {filteredNavItems.map((item) => {
               const Icon = item.icon ? Icons[item.icon] : Icons.logo;
               return item?.items && item?.items?.length > 0 ? (
                 <Collapsible

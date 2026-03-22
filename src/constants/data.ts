@@ -54,6 +54,31 @@ export const navItems: NavItem[] = [
     icon: 'shieldCheck',
     isActive: false,
     items: [],
+    roles: ['cimat_admin', 'tecnico_municipal'],
+  },
+  {
+    title: 'Utilizadores',
+    url: '/dashboard/admin/users',
+    icon: 'users',
+    isActive: false,
+    items: [],
+    roles: ['cimat_admin'],
+  },
+  {
+    title: 'Equipa',
+    url: '/dashboard/municipio/equipa',
+    icon: 'usersRound',
+    isActive: false,
+    items: [],
+    roles: ['tecnico_municipal'],
+  },
+  {
+    title: 'Atividade',
+    url: '/dashboard/admin/activity',
+    icon: 'activity',
+    isActive: false,
+    items: [],
+    roles: ['cimat_admin'],
   },
 ];
 

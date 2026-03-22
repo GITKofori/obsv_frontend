@@ -37,6 +37,9 @@ import {
   UserCircle2Icon,
   UserPen,
   UserX2Icon,
+  Users,
+  UsersRound,
+  Activity,
   X
 } from 'lucide-react';
 
@@ -96,5 +99,8 @@ export const Icons = {
   listChecks: ListChecks,
   mapPin: MapPin,
   radio: Radio,
-  shieldCheck: ShieldCheck
+  shieldCheck: ShieldCheck,
+  users: Users,
+  usersRound: UsersRound,
+  activity: Activity,
 };

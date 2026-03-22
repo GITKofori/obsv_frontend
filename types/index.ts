@@ -11,6 +11,7 @@ export interface NavItem {
   description?: string;
   isActive?: boolean;
   items?: NavItem[];
+  roles?: ('cimat_admin' | 'tecnico_municipal' | 'parceiro_externo')[];
 }
 
 export interface NavItemWithChildren extends NavItem {
