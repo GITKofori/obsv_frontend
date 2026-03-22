@@ -8,6 +8,13 @@ import { SectorEmissionsChart } from '@/features/core/components/sector-emission
 import { HistoricalChart } from '@/features/core/components/historical-chart';
 import { OdsBadge } from '@/features/core/components/ods-badge';
 import { Loader2 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useMunicipio } from '@/hooks/use-municipio';
 import { createBrowserSupabase } from '@/utils/supabase/client';
 import axios from 'axios';
@@ -32,6 +39,7 @@ export default function CorePage() {
   const [data, setData] = useState<CoreSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -41,12 +49,18 @@ export default function CorePage() {
         const supabase = createBrowserSupabase();
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
-        const munParam = municipioId ? `?municipio=${municipioId}` : '';
+        const params = new URLSearchParams();
+        if (municipioId) params.set('municipio', String(municipioId));
+        if (selectedYear) params.set('year', String(selectedYear));
+        const qs = params.toString() ? `?${params.toString()}` : '';
         const res = await axios.get<CoreSummary>(
-          `${BACKEND}/api/protected/core/summary${munParam}`,
+          `${BACKEND}/api/protected/core/summary${qs}`,
           { headers: { Authorization: `Bearer ${session.access_token}` } }
         );
         setData(res.data);
+        if (selectedYear === null && res.data.latestYear) {
+          setSelectedYear(res.data.latestYear);
+        }
       } catch (err) {
         console.error('Error fetching CORE data:', err);
         setError('Erro ao carregar dados. Tente novamente.');
@@ -55,7 +69,7 @@ export default function CorePage() {
       }
     }
     fetchData();
-  }, [municipioId]);
+  }, [municipioId, selectedYear]);
 
   const ev = data?.energyByVector;
   const mixData = ev ? [
@@ -113,6 +127,8 @@ export default function CorePage() {
     },
   ];
 
+  const availableYears = data?.energyByYear?.map(p => p.year).reverse() ?? [];
+
   if (loading) {
     return (
       <PageContainer>
@@ -163,6 +179,23 @@ export default function CorePage() {
             </Card>
           ))}
         </div>
+
+        {availableYears.length > 1 && (
+          <div className='flex items-center gap-2'>
+            <span className='text-sm text-muted-foreground'>Ano:</span>
+            <Select
+              value={String(selectedYear ?? data?.latestYear ?? '')}
+              onValueChange={v => setSelectedYear(Number(v))}
+            >
+              <SelectTrigger className='w-24'><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {availableYears.map(y => (
+                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className='grid gap-4 md:grid-cols-2'>
           <Card>
