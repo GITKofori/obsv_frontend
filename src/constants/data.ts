@@ -21,7 +21,7 @@ export const navItems: NavItem[] = [
     items: [],
   },
   {
-    title: 'Monitorização CORE',
+    title: 'Perfil Climático',
     url: '/dashboard/core',
     icon: 'database',
     isActive: false,

@@ -92,7 +92,7 @@ export default function CorePage() {
   return (
     <PageContainer>
       <div className='flex flex-1 flex-col space-y-6'>
-        <h2 className='text-2xl font-bold tracking-tight'>Monitorização CORE</h2>
+        <h2 className='text-2xl font-bold tracking-tight'>Perfil Climático</h2>
 
         <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
           {kpis.map((kpi) => (
@@ -132,7 +132,7 @@ export default function CorePage() {
         <Card>
           <CardHeader>
             <CardTitle>Evolução Histórica de Consumo Final de Energia</CardTitle>
-            <p className='text-sm text-muted-foreground'>MWh por vetor energético (2010–2024)</p>
+            <p className='text-sm text-muted-foreground'>{`MWh por vetor energético — ${data?.energyByYear?.[0]?.year ?? 2010}–${data?.energyByYear?.at(-1)?.year ?? new Date().getFullYear()}`}</p>
           </CardHeader>
           <CardContent>
             <HistoricalChart data={data?.energyByYear ?? []} />
