@@ -6,12 +6,14 @@ import { toast } from 'sonner';
 import PageContainer from '@/components/layout/page-container';
 import { ShieldCheck, ShieldX } from 'lucide-react';
 import { createBrowserSupabase } from '@/utils/supabase/client';
-import { ValidacaoPendentes, UserRole } from 'types/pmac';
-import { PendentesList } from '@/features/validacao/components/pendentes-list';
+import { UserRole } from 'types/pmac';
+import { GestaoPendentesList } from '@/features/validacao/components/gestao-pendentes-list';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { ScraperTab } from '@/features/scrapers/components/scraper-tab';
+import { DgegScraperTab } from '@/features/scrapers/components/dgeg-scraper-tab';
 
 export default function ValidacaoPage() {
   const [role, setRole] = useState<UserRole | null>(null);
-  const [pendentes, setPendentes] = useState<ValidacaoPendentes | null>(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
 
@@ -44,11 +46,6 @@ export default function ValidacaoPage() {
           return;
         }
 
-        // Fetch pending items
-        const pendentesRes = await axios.get('/api/protected/validacao/pendentes', {
-          headers,
-        });
-        setPendentes(pendentesRes.data);
       } catch (error) {
         console.error('Error fetching validacao data:', error);
         toast.error('Erro ao carregar dados de validacao.');
@@ -99,15 +96,25 @@ export default function ValidacaoPage() {
           </h2>
         </div>
 
-        {pendentes ? (
-          <PendentesList initialData={pendentes} />
-        ) : (
-          <div className='rounded-lg border border-dashed p-8 text-center'>
-            <p className='text-sm text-muted-foreground'>
-              Nao foi possivel carregar os dados pendentes.
-            </p>
-          </div>
-        )}
+        <Tabs defaultValue='pendentes'>
+          <TabsList>
+            <TabsTrigger value='pendentes'>Pendentes</TabsTrigger>
+            <TabsTrigger value='scrapers'>Scrapers ISO</TabsTrigger>
+            <TabsTrigger value='dgeg'>Energia DGEG</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value='pendentes'>
+            <GestaoPendentesList />
+          </TabsContent>
+
+          <TabsContent value='scrapers'>
+            <ScraperTab />
+          </TabsContent>
+
+          <TabsContent value='dgeg'>
+            <DgegScraperTab />
+          </TabsContent>
+        </Tabs>
       </div>
     </PageContainer>
   );
