@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -37,6 +37,31 @@ const MUNICIPIO_ID_MAP: Record<string, number> = {
   'Vila Pouca de Aguiar': 6
 };
 
+// ── Color helpers ─────────────────────────────────────────────────────────────
+
+const LAYER_COLORS: Record<string, [string, string]> = {
+  energia:   ['#bfdbfe', '#1d4ed8'],
+  emissoes:  ['#fed7aa', '#b91c1c'],
+  medidas:   ['#bbf7d0', '#15803d'],
+};
+
+function hexToRgb(hex: string): [number, number, number] {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return [r, g, b];
+}
+
+function valueToColor(value: number, min: number, max: number, low: string, high: string): string {
+  if (max === min || value == null) return '#cccccc';
+  const t = Math.max(0, Math.min(1, (value - min) / (max - min)));
+  const [r1, g1, b1] = hexToRgb(low);
+  const [r2, g2, b2] = hexToRgb(high);
+  return `rgb(${Math.round(r1 + (r2-r1)*t)},${Math.round(g1 + (g2-g1)*t)},${Math.round(b1 + (b2-b1)*t)})`;
+}
+
+// ── Interfaces ────────────────────────────────────────────────────────────────
+
 interface SelectedFeature {
   name: string;
   properties: Record<string, unknown>;
@@ -62,23 +87,41 @@ interface ReportData {
   setorProgress: { setor: string; total_medidas: number }[];
 }
 
+type MapDataEntry = { energia_mwh: number; gee_tco2: number; medidas_count: number };
+
 // ── Inline sub-component ──────────────────────────────────────────────────────
 
 interface MunicipioInfoBoxProps {
   feature: SelectedFeature;
   municipios: MunicipioInfo[];
+  mapData: Record<string, MapDataEntry>;
+  selectedLayer: string;
+  selectedYear: number;
   onVerPerfil: (mun: ProfileMunicipio) => void;
 }
 
 function MunicipioInfoBox({
   feature,
   municipios,
+  mapData,
+  selectedLayer,
+  selectedYear,
   onVerPerfil
 }: MunicipioInfoBoxProps) {
   const nome = feature.name;
   const info = municipios.find((m) => m.nome === nome);
   const emissoes = info?.emissoes_base_2005 ?? null;
   const municipioId = MUNICIPIO_ID_MAP[nome] ?? info?.id ?? null;
+
+  const munData = mapData[nome];
+  const layerLabel = selectedLayer === 'energia' ? 'Consumo Energia'
+    : selectedLayer === 'emissoes' ? 'Emissões GEE'
+    : 'Medidas PMAC';
+  const layerValue = munData
+    ? selectedLayer === 'energia' ? `${munData.energia_mwh.toLocaleString('pt-PT')} MWh`
+      : selectedLayer === 'emissoes' ? `${munData.gee_tco2.toLocaleString('pt-PT')} tCO2e`
+      : `${munData.medidas_count} medidas`
+    : 'N/D';
 
   return (
     <div className="rounded-lg border bg-card p-4 space-y-3 shadow-sm">
@@ -90,12 +133,8 @@ function MunicipioInfoBox({
       </div>
 
       <div>
-        <p className="text-xs text-muted-foreground">Emissões 2005</p>
-        <p className="font-semibold text-sm">
-          {emissoes != null
-            ? `${emissoes.toLocaleString('pt-PT')} tCO2e`
-            : 'N/D'}
-        </p>
+        <p className="text-xs text-muted-foreground">{layerLabel} ({selectedYear})</p>
+        <p className="font-semibold text-sm">{layerValue}</p>
       </div>
 
       {municipioId != null && (
@@ -128,6 +167,9 @@ export default function MapsPage() {
 
   // Municipios data (fetched once)
   const [municipios, setMunicicios] = useState<MunicipioInfo[]>([]);
+
+  // Map choropleth data
+  const [mapData, setMapData] = useState<Record<string, MapDataEntry>>({});
 
   // Profile sheet state
   const [profileOpen, setProfileOpen] = useState(false);
@@ -175,6 +217,58 @@ export default function MapsPage() {
       }
     })();
   }, []);
+
+  // Fetch choropleth data
+  const fetchMapData = useCallback(async (year: number, layer: string) => {
+    try {
+      const supabase = createBrowserSupabase();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/protected/core/map?year=${year}&layer=${layer}`,
+        { headers: { Authorization: `Bearer ${session.access_token}` } }
+      );
+      if (!res.ok) return;
+      const rows: { municipio: string; energia_mwh: number; gee_tco2: number; medidas_count: number }[] = await res.json();
+      const byName: Record<string, MapDataEntry> = {};
+      for (const r of rows) byName[r.municipio] = r;
+      setMapData(byName);
+    } catch (err) {
+      console.error('Failed to fetch map data:', err);
+    }
+  }, []);
+
+  // Re-fetch when year or layer changes
+  useEffect(() => {
+    fetchMapData(selectedYear, selectedLayer);
+  }, [selectedYear, selectedLayer, fetchMapData]);
+
+  // Update Mapbox choropleth colors when mapData or selectedLayer changes
+  useEffect(() => {
+    if (!map.current || !mapLoaded || !Object.keys(mapData).length) return;
+    const currentMap = map.current;
+    if (!currentMap.getLayer('concelhos-fill')) return;
+
+    const fieldKey = selectedLayer === 'energia' ? 'energia_mwh'
+      : selectedLayer === 'emissoes' ? 'gee_tco2'
+      : 'medidas_count';
+    const values = Object.values(mapData).map(d => d[fieldKey as keyof MapDataEntry] as number);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const [low, high] = LAYER_COLORS[selectedLayer] ?? LAYER_COLORS.energia;
+
+    // Build Mapbox match expression: ['match', ['get', 'NAME_2'], mun1, color1, ..., fallback]
+    const matchExpr: unknown[] = [
+      'match', ['get', 'NAME_2'],
+      ...Object.entries(mapData).flatMap(([mun, d]) => [
+        mun, valueToColor(d[fieldKey as keyof MapDataEntry] as number, min, max, low, high)
+      ]),
+      '#cccccc'
+    ];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    currentMap.setPaintProperty('concelhos-fill', 'fill-color', matchExpr as any);
+  }, [mapData, selectedLayer, mapLoaded]);
 
   // Initialize map
   useEffect(() => {
@@ -463,6 +557,9 @@ export default function MapsPage() {
               <MunicipioInfoBox
                 feature={selectedFeature}
                 municipios={municipios}
+                mapData={mapData}
+                selectedLayer={selectedLayer}
+                selectedYear={selectedYear}
                 onVerPerfil={handleVerPerfil}
               />
             )}
