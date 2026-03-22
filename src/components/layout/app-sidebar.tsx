@@ -60,6 +60,26 @@ export default function AppSidebar() {
   const pathname = usePathname();
   const { state, isMobile } = useSidebar();
   const supabase = React.useMemo(() => createBrowserSupabase(), []);
+  const [pendingCount, setPendingCount] = React.useState(0);
+
+  React.useEffect(() => {
+    async function fetchCount() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/protected/gestao/pending-count`, {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          setPendingCount(json.count);
+        }
+      } catch { /* ignore */ }
+    }
+    fetchCount();
+    const interval = setInterval(fetchCount, 30_000);
+    return () => clearInterval(interval);
+  }, [supabase]);
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -159,6 +179,11 @@ export default function AppSidebar() {
                     <Link href={item.url}>
                       <Icon />
                       <span>{item.title}</span>
+                      {item.url === '/dashboard/validacao' && pendingCount > 0 && (
+                        <span className='ml-auto text-[10px] font-black bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-full'>
+                          {pendingCount}
+                        </span>
+                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
