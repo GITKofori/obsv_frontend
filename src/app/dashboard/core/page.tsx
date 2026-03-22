@@ -16,7 +16,12 @@ const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 interface CoreSummary {
   latestYear: number | null;
+  baseline2005_tco2: number;
+  population: number | null;
+  gee_per_capita: number | null;
+  energy_per_capita: number | null;
   energyByVector: { electricity_mwh: number; gas_mwh: number; oil_mwh: number; total_mwh: number };
+  geeByVector: { electricity_tco2: number; gas_tco2: number; oil_tco2: number; total_tco2: number };
   energyByYear: { year: number; electricity_mwh: number | null; gas_mwh: number | null; oil_mwh: number | null }[];
   energyBySector: { sector: string; mwh: number }[];
   lastSync: string | null;
@@ -59,15 +64,53 @@ export default function CorePage() {
     { name: 'Petróleo',     value: ev.oil_mwh },
   ].filter(d => d.value > 0) : [];
 
-  const lastSync = data?.lastSync
-    ? new Date(data.lastSync).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })
-    : 'N/D';
+  const geeTrend = data?.baseline2005_tco2 && data?.geeByVector?.total_tco2
+    ? (((data.geeByVector.total_tco2 - data.baseline2005_tco2) / data.baseline2005_tco2) * 100).toFixed(1)
+    : null;
+
+  const earliestYear = data?.energyByYear?.[0];
+  const latestYearData = data?.energyByYear?.at(-1);
+  const energyTrend = earliestYear && latestYearData && earliestYear.year !== latestYearData.year
+    ? (((
+        (latestYearData.electricity_mwh ?? 0) + (latestYearData.gas_mwh ?? 0) + (latestYearData.oil_mwh ?? 0) -
+        (earliestYear.electricity_mwh ?? 0) - (earliestYear.gas_mwh ?? 0) - (earliestYear.oil_mwh ?? 0)
+      ) / ((earliestYear.electricity_mwh ?? 0) + (earliestYear.gas_mwh ?? 0) + (earliestYear.oil_mwh ?? 0))
+    ) * 100).toFixed(1)
+    : null;
 
   const kpis = [
-    { label: 'Consumo Total', value: ev ? `${ev.total_mwh.toLocaleString('pt-PT')} MWh` : 'N/D', borderColor: 'border-b-blue-500', ods: [7, 12, 13] },
-    { label: 'Ano de Referência', value: data?.latestYear ? String(data.latestYear) : 'N/D', borderColor: 'border-b-amber-500', ods: [] as number[] },
-    { label: 'Vetores Energéticos', value: mixData.length ? String(mixData.length) : 'N/D', borderColor: 'border-b-emerald-500', ods: [7, 12] },
-    { label: 'Última Sincronização', value: lastSync, borderColor: 'border-b-violet-500', ods: [] as number[] },
+    {
+      label: 'Emissões GEE per capita',
+      value: data?.gee_per_capita != null ? `${data.gee_per_capita.toLocaleString('pt-PT')} tCO₂e/hab` : 'N/D',
+      trend: geeTrend ? { value: geeTrend, label: 'vs 2005' } : null,
+      borderColor: 'border-b-emerald-500',
+      ods: [13],
+      note: null as string | null,
+    },
+    {
+      label: 'Intensidade Energética',
+      value: data?.energy_per_capita != null ? `${data.energy_per_capita.toLocaleString('pt-PT')} MWh/hab` : 'N/D',
+      trend: energyTrend ? { value: energyTrend, label: `vs ${earliestYear?.year ?? '—'}` } : null,
+      borderColor: 'border-b-blue-500',
+      ods: [7, 12],
+      note: null as string | null,
+    },
+    {
+      label: 'Intensidade Carbónica',
+      value: 'N/D',
+      trend: null,
+      borderColor: 'border-b-amber-500',
+      ods: [7, 8, 12],
+      note: 'Requer dados PIB',
+    },
+    {
+      label: 'Produção Renovável Local',
+      value: 'N/D',
+      trend: null,
+      borderColor: 'border-b-violet-500',
+      ods: [7, 12, 13],
+      note: 'Dados não disponíveis',
+    },
   ];
 
   if (loading) {
@@ -102,8 +145,20 @@ export default function CorePage() {
                 <p className='text-[10px] font-black text-muted-foreground uppercase tracking-widest'>{kpi.label}</p>
               </CardHeader>
               <CardContent>
-                <p className='text-2xl font-black'>{kpi.value}</p>
-                {kpi.ods.length > 0 && <OdsBadge ids={kpi.ods} />}
+                <div className='flex items-end gap-2'>
+                  <p className='text-2xl font-black'>{kpi.value}</p>
+                  {kpi.trend && (
+                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded mb-0.5 ${
+                      Number(kpi.trend.value) <= 0
+                        ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950'
+                        : 'text-red-600 bg-red-50 dark:bg-red-950'
+                    }`}>
+                      {Number(kpi.trend.value) > 0 ? '+' : ''}{kpi.trend.value}% {kpi.trend.label}
+                    </span>
+                  )}
+                </div>
+                {kpi.note && <p className='text-[10px] text-muted-foreground mt-1'>{kpi.note}</p>}
+                <OdsBadge ids={kpi.ods} />
               </CardContent>
             </Card>
           ))}
