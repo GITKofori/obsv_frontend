@@ -92,7 +92,7 @@ export default function CorePage() {
   return (
     <PageContainer>
       <div className='flex flex-1 flex-col space-y-6'>
-        <h2 className='text-2xl font-bold tracking-tight'>Monitorizacao CORE</h2>
+        <h2 className='text-2xl font-bold tracking-tight'>Monitorização CORE</h2>
 
         <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
           {kpis.map((kpi) => (
