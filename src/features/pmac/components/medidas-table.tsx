@@ -135,6 +135,7 @@ export function MedidasTable({ medidas, userRole, onEdit, onDelete, onRefresh }:
                   onEdit={onEdit}
                   onDelete={onDelete}
                   onAddIndicador={(m) => setIndicadorMedida(m)}
+                  onRefresh={onRefresh}
                 />
               );
             })}
@@ -171,6 +172,7 @@ function MedidaRow({
   onEdit,
   onDelete,
   onAddIndicador,
+  onRefresh,
 }: {
   medida: Medida & { indicadores: Indicador[] };
   status: string;
@@ -181,6 +183,7 @@ function MedidaRow({
   onEdit: (medida: Medida) => void;
   onDelete: (medida: Medida) => void;
   onAddIndicador: (medida: Medida & { indicadores: Indicador[] }) => void;
+  onRefresh: () => void;
 }) {
   return (
     <>
@@ -279,7 +282,7 @@ function MedidaRow({
                 </p>
               ) : (
                 medida.indicadores.map((ind) => (
-                  <IndicadorRow key={ind.id} indicador={ind} />
+                  <IndicadorRow key={ind.id} indicador={ind} onRefresh={onRefresh} />
                 ))
               )}
               {canManage && (

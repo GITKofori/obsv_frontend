@@ -43,7 +43,8 @@ export interface Execucao {
   url_evidencia: string | null;
   observacoes: string | null;
   data_insercao: string;
-  estado_validacao: 'Pendente' | 'Aprovado' | 'Rejeitado';
+  estado_validacao: 'Rascunho' | 'Submetido' | 'Aprovado' | 'Rejeitado';
+  nota_rejeicao?: string | null;
 }
 
 export interface SensorIoT {

@@ -4,12 +4,24 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { AlertTriangle, FileEdit } from 'lucide-react';
-import { Indicador } from 'types/pmac';
+import { AlertTriangle, FileEdit, SendHorizontal } from 'lucide-react';
+import { Indicador, Execucao } from 'types/pmac';
 import { ReportModal } from './report-modal';
+import { createBrowserSupabase } from '@/utils/supabase/client';
+import axios from 'axios';
+
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+const VALIDATION_COLORS: Record<string, string> = {
+  Rascunho: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300',
+  Submetido: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+  Aprovado: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+  Rejeitado: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
+};
 
 interface IndicadorRowProps {
   indicador: Indicador;
+  onRefresh?: () => void;
 }
 
 function getScenario(indicador: Indicador): 'A' | 'B' | 'C' {
@@ -36,10 +48,30 @@ const SCENARIO_LABELS: Record<string, { label: string; className: string }> = {
   },
 };
 
-export function IndicadorRow({ indicador }: IndicadorRowProps) {
+export function IndicadorRow({ indicador, onRefresh }: IndicadorRowProps) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const scenario = getScenario(indicador);
   const scenarioInfo = SCENARIO_LABELS[scenario];
+
+  async function handleSubmit(execucaoId: number) {
+    setSubmitting(true);
+    try {
+      const supabase = createBrowserSupabase();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await axios.post(
+        `${BACKEND}/api/protected/gestao/${execucaoId}/submit`,
+        {},
+        { headers: { Authorization: `Bearer ${session.access_token}` } }
+      );
+      onRefresh?.();
+    } catch (err) {
+      console.error('Submit error:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   const progress =
     indicador.meta_alvo != null && indicador.meta_alvo > 0
@@ -112,6 +144,38 @@ export function IndicadorRow({ indicador }: IndicadorRowProps) {
           Atualizar Reporte
         </Button>
       </div>
+
+      {/* Execution records with validation status */}
+      {indicador.execucoes && indicador.execucoes.length > 0 && (
+        <div className='mt-2 space-y-1.5'>
+          {indicador.execucoes.map((exec: Execucao) => (
+            <div key={exec.id} className='flex items-center gap-2 text-xs bg-muted/50 rounded px-3 py-1.5'>
+              <span className='text-muted-foreground'>{exec.ano_referencia}</span>
+              <span className='font-semibold'>{exec.valor_executado?.toLocaleString('pt-PT')}</span>
+              <Badge variant='secondary' className={`text-[9px] ${VALIDATION_COLORS[exec.estado_validacao] ?? ''}`}>
+                {exec.estado_validacao}
+              </Badge>
+              {(exec.estado_validacao === 'Rascunho' || exec.estado_validacao === 'Rejeitado') && (
+                <Button
+                  size='sm'
+                  variant='outline'
+                  className='h-6 text-[10px] px-2 ml-auto'
+                  disabled={submitting}
+                  onClick={() => handleSubmit(exec.id)}
+                >
+                  <SendHorizontal className='mr-1 h-3 w-3' />
+                  Submeter
+                </Button>
+              )}
+              {exec.estado_validacao === 'Rejeitado' && exec.nota_rejeicao && (
+                <span className='text-destructive italic ml-1'>
+                  Nota: {exec.nota_rejeicao}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       <ReportModal
         indicador={indicador}
