@@ -1,23 +1,23 @@
-// components/layout/providers.tsx
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
+import type { AppUser } from 'types/pmac';
 import ThemeProvider from './ThemeToggle/theme-provider';
 import { createBrowserSupabase } from '@/utils/supabase/client';
 
-// Contexto de autenticação Supabase
 interface AuthContextType {
   user: User | null;
+  appUser: AppUser | null;
   loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  appUser: null,
   loading: true
 });
 
-// Hook para usar o contexto de auth
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -26,10 +26,9 @@ export function useAuth() {
   return context;
 }
 
-// Provider combinado (Auth + Theme)
 interface ProvidersProps {
   children: React.ReactNode;
-  user: User | null; // Vem do layout server-side
+  user: User | null;
 }
 
 export default function Providers({
@@ -37,11 +36,37 @@ export default function Providers({
   user: initialUser
 }: ProvidersProps) {
   const [user, setUser] = useState<User | null>(initialUser);
+  const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(false);
   const supabase = createBrowserSupabase();
 
+  // Fetch app user role info when user is set
   useEffect(() => {
-    // Listener para mudanças de autenticação
+    async function fetchAppUser() {
+      if (!user) {
+        setAppUser(null);
+        return;
+      }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/protected/users/me`,
+          { headers: { Authorization: `Bearer ${session.access_token}` } }
+        );
+        if (res.ok) {
+          const data: AppUser = await res.json();
+          setAppUser(data);
+        }
+      } catch {
+        // Silently fail — appUser stays null
+      }
+    }
+    fetchAppUser();
+  }, [user, supabase]);
+
+  useEffect(() => {
     const {
       data: { subscription }
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -53,7 +78,7 @@ export default function Providers({
   }, [supabase]);
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, appUser, loading }}>
       <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
         {children}
       </ThemeProvider>

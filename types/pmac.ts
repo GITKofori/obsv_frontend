@@ -67,6 +67,33 @@ export interface UserRole {
   medidas_atribuidas: string[];
 }
 
+export type AppUserRole = 'cimat_admin' | 'tecnico_municipal' | 'parceiro_externo';
+export type AppUserEstado = 'convidado' | 'ativo' | 'desativado';
+
+export interface AppUser {
+  id: number;
+  supabase_user_id: string;
+  role: AppUserRole;
+  fk_municipio: number | null;
+  municipio_nome: string | null;
+  medidas_atribuidas: string[];
+  nome: string | null;
+  email: string;
+  estado: AppUserEstado;
+}
+
+export interface UserListItem extends AppUser {
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface TrajetoriaData {
   baseline: {
     emissoes_base_2005: number;
