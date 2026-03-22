@@ -24,6 +24,7 @@ import concelhosData from '@/assets/geojson/concelhos.json';
 import { createBrowserSupabase } from '@/utils/supabase/client';
 import { TerritorialProfileSheet } from '@/features/map/components/territorial-profile-sheet';
 import { ExecutiveReport } from '@/features/map/components/executive-report';
+import { MunicipioProfilePanel } from '@/features/map/components/municipio-profile-panel';
 
 // Set Mapbox access token
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN!;
@@ -98,6 +99,7 @@ interface MunicipioInfoBoxProps {
   selectedLayer: string;
   selectedYear: number;
   onVerPerfil: (mun: ProfileMunicipio) => void;
+  onVerPerfilCompleto: () => void;
 }
 
 function MunicipioInfoBox({
@@ -106,7 +108,8 @@ function MunicipioInfoBox({
   mapData,
   selectedLayer,
   selectedYear,
-  onVerPerfil
+  onVerPerfil,
+  onVerPerfilCompleto,
 }: MunicipioInfoBoxProps) {
   const nome = feature.name;
   const info = municipios.find((m) => m.nome === nome);
@@ -138,15 +141,25 @@ function MunicipioInfoBox({
       </div>
 
       {municipioId != null && (
-        <Button
-          size="sm"
-          className="w-full"
-          onClick={() =>
-            onVerPerfil({ id: municipioId, nome, emissoes })
-          }
-        >
-          Ver Perfil Completo
-        </Button>
+        <div className="space-y-2">
+          <Button
+            size="sm"
+            className="w-full"
+            onClick={() =>
+              onVerPerfil({ id: municipioId, nome, emissoes })
+            }
+          >
+            Ver Perfil Completo
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full"
+            onClick={onVerPerfilCompleto}
+          >
+            Painel Territorial
+          </Button>
+        </div>
       )}
     </div>
   );
@@ -175,6 +188,9 @@ export default function MapsPage() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileMunicipio, setProfileMunicipio] =
     useState<ProfileMunicipio | null>(null);
+
+  // Profile panel state
+  const [showProfilePanel, setShowProfilePanel] = useState(false);
 
   // Report overlay state
   const [reportOpen, setReportOpen] = useState(false);
@@ -561,6 +577,7 @@ export default function MapsPage() {
                 selectedLayer={selectedLayer}
                 selectedYear={selectedYear}
                 onVerPerfil={handleVerPerfil}
+                onVerPerfilCompleto={() => setShowProfilePanel(true)}
               />
             )}
 
@@ -594,6 +611,16 @@ export default function MapsPage() {
                 <Minus className="h-4 w-4" />
               </Button>
             </div>
+
+            {/* Profile Panel */}
+            {showProfilePanel && selectedFeature && (
+              <MunicipioProfilePanel
+                municipioName={selectedFeature.name}
+                municipioId={MUNICIPIO_ID_MAP[selectedFeature.name] ?? null}
+                selectedYear={selectedYear}
+                onClose={() => setShowProfilePanel(false)}
+              />
+            )}
           </div>
         </div>
       </div>
