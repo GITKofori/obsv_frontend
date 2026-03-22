@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EnergyMixChart } from '@/features/core/components/energy-mix-chart';
 import { SectorEmissionsChart } from '@/features/core/components/sector-emissions-chart';
 import { HistoricalChart } from '@/features/core/components/historical-chart';
+import { OdsBadge } from '@/features/core/components/ods-badge';
 import { Loader2 } from 'lucide-react';
 import { useMunicipio } from '@/hooks/use-municipio';
 import { createBrowserSupabase } from '@/utils/supabase/client';
@@ -63,10 +64,10 @@ export default function CorePage() {
     : 'N/D';
 
   const kpis = [
-    { label: 'Consumo Total', value: ev ? `${ev.total_mwh.toLocaleString('pt-PT')} MWh` : 'N/D', borderColor: 'border-b-blue-500' },
-    { label: 'Ano de Referência', value: data?.latestYear ? String(data.latestYear) : 'N/D', borderColor: 'border-b-amber-500' },
-    { label: 'Vetores Energéticos', value: mixData.length ? String(mixData.length) : 'N/D', borderColor: 'border-b-emerald-500' },
-    { label: 'Última Sincronização', value: lastSync, borderColor: 'border-b-violet-500' },
+    { label: 'Consumo Total', value: ev ? `${ev.total_mwh.toLocaleString('pt-PT')} MWh` : 'N/D', borderColor: 'border-b-blue-500', ods: [7, 12, 13] },
+    { label: 'Ano de Referência', value: data?.latestYear ? String(data.latestYear) : 'N/D', borderColor: 'border-b-amber-500', ods: [] as number[] },
+    { label: 'Vetores Energéticos', value: mixData.length ? String(mixData.length) : 'N/D', borderColor: 'border-b-emerald-500', ods: [7, 12] },
+    { label: 'Última Sincronização', value: lastSync, borderColor: 'border-b-violet-500', ods: [] as number[] },
   ];
 
   if (loading) {
@@ -102,6 +103,7 @@ export default function CorePage() {
               </CardHeader>
               <CardContent>
                 <p className='text-2xl font-black'>{kpi.value}</p>
+                {kpi.ods.length > 0 && <OdsBadge ids={kpi.ods} />}
               </CardContent>
             </Card>
           ))}
