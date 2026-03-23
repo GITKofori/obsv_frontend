@@ -18,19 +18,39 @@ export default function AcceptInvitePage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Check if there's already a session (e.g. token was exchanged before listener registered)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setSessionReady(true);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
-          setSessionReady(true);
-        }
+    // The invite link arrives with tokens in the URL hash fragment:
+    //   /accept-invite#access_token=...&refresh_token=...&type=invite
+    // @supabase/ssr does NOT auto-detect hash fragments, so we must
+    // parse them and call setSession explicitly.
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+      const params = new URLSearchParams(hash);
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      if (accessToken && refreshToken) {
+        supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        }).then(({ error: sessionError }) => {
+          if (sessionError) {
+            setError('Convite inválido ou expirado.');
+            console.error('setSession error:', sessionError);
+          } else {
+            setSessionReady(true);
+          }
+        });
+        return; // setSession handles the session, no need to check further
       }
-    );
-    return () => subscription.unsubscribe();
+    }
+
+    // Fallback: check if there's already an active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setSessionReady(true);
+      } else {
+        setError('Link de convite inválido. Peça um novo convite.');
+      }
+    });
   }, [supabase]);
 
   async function handleSetPassword(e: React.FormEvent) {
@@ -62,8 +82,19 @@ export default function AcceptInvitePage() {
     return (
       <div className='flex min-h-screen items-center justify-center'>
         <div className='text-center'>
-          <div className='h-8 w-8 mx-auto animate-spin rounded-full border-4 border-primary border-t-transparent' />
-          <p className='mt-4 text-sm text-muted-foreground'>A verificar convite...</p>
+          {error ? (
+            <>
+              <p className='text-sm text-destructive'>{error}</p>
+              <p className='mt-2 text-xs text-muted-foreground'>
+                Contacte o administrador para receber um novo convite.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className='h-8 w-8 mx-auto animate-spin rounded-full border-4 border-primary border-t-transparent' />
+              <p className='mt-4 text-sm text-muted-foreground'>A verificar convite...</p>
+            </>
+          )}
         </div>
       </div>
     );

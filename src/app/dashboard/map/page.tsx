@@ -302,6 +302,9 @@ export default function MapsPage() {
   useEffect(() => {
     if (!mapContainer.current) return;
 
+    // Reset so GeoJSON layer effect waits for the new map's load event
+    setMapLoaded(false);
+
     const mapStyles = {
       light: {
         version: 8 as const,
@@ -364,7 +367,12 @@ export default function MapsPage() {
     };
   }, [isDarkMode]);
 
-  // Add GeoJSON layers
+  // Add GeoJSON layers — depends only on mapLoaded and concelhosData.
+  // isDarkMode is intentionally excluded: when the theme changes the map is
+  // recreated, which cycles mapLoaded (false → true) and re-triggers this
+  // effect with the new map already loaded. Including isDarkMode would cause
+  // this effect to run in the same render as the map-init effect, before
+  // setMapLoaded(false) takes effect, crashing the map.
   useEffect(() => {
     if (!map.current || !mapLoaded || !concelhosData) return;
 
@@ -377,11 +385,13 @@ export default function MapsPage() {
     if (currentMap.getSource('portugal-concelhos'))
       currentMap.removeSource('portugal-concelhos');
 
+    // Read current dark mode state at execution time (not from deps)
+    const dark = document.documentElement.classList.contains('dark');
     const layerColors = {
-      fillColor: isDarkMode
+      fillColor: dark
         ? 'rgba(139, 92, 246, 0.3)'
         : 'rgba(99, 102, 241, 0.2)',
-      borderColor: isDarkMode ? '#A855F7' : '#4F46E5'
+      borderColor: dark ? '#A855F7' : '#4F46E5'
     };
 
     const targetMunicipios = [
@@ -428,7 +438,7 @@ export default function MapsPage() {
     });
 
     currentMap.on('click', 'concelhos-fill', handleFeatureClick);
-  }, [mapLoaded, isDarkMode, concelhosData]);
+  }, [mapLoaded, concelhosData]);
 
   const handleFeatureClick = (e: mapboxgl.MapMouseEvent) => {
     if (e.features && e.features.length > 0) {
