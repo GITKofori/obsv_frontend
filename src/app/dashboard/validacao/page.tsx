@@ -9,8 +9,6 @@ import { createBrowserSupabase } from '@/utils/supabase/client';
 import { UserRole } from 'types/pmac';
 import { GestaoPendentesList } from '@/features/validacao/components/gestao-pendentes-list';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { ScraperTab } from '@/features/scrapers/components/scraper-tab';
-import { DgegScraperTab } from '@/features/scrapers/components/dgeg-scraper-tab';
 
 export default function ValidacaoPage() {
   const [role, setRole] = useState<UserRole | null>(null);
@@ -22,7 +20,7 @@ export default function ValidacaoPage() {
       try {
         const supabase = createBrowserSupabase();
         const {
-          data: { session },
+          data: { session }
         } = await supabase.auth.getSession();
 
         if (!session?.access_token) {
@@ -34,9 +32,12 @@ export default function ValidacaoPage() {
         const headers = { Authorization: `Bearer ${session.access_token}` };
 
         // Check user role first
-        const roleRes = await axios.get('/api/protected/dashboard-pmac/user-role', {
-          headers,
-        });
+        const roleRes = await axios.get(
+          '/api/protected/dashboard-pmac/user-role',
+          {
+            headers
+          }
+        );
         const userRole: UserRole = roleRes.data;
         setRole(userRole);
 
@@ -45,7 +46,6 @@ export default function ValidacaoPage() {
           setLoading(false);
           return;
         }
-
       } catch (error) {
         console.error('Error fetching validacao data:', error);
         toast.error('Erro ao carregar dados de validacao.');
@@ -76,10 +76,10 @@ export default function ValidacaoPage() {
         <div className='flex flex-1 flex-col items-center justify-center py-20'>
           <ShieldX className='h-16 w-16 text-red-400' />
           <h2 className='mt-4 text-xl font-bold'>Acesso Restrito</h2>
-          <p className='mt-2 text-sm text-muted-foreground text-center max-w-md'>
+          <p className='mt-2 max-w-md text-center text-sm text-muted-foreground'>
             Esta pagina esta reservada a administradores CIMAT. O seu perfil
-            atual ({role?.role ?? 'desconhecido'}) nao tem permissao para
-            aceder a esta funcionalidade.
+            atual ({role?.role ?? 'desconhecido'}) nao tem permissao para aceder
+            a esta funcionalidade.
           </p>
         </div>
       </PageContainer>
@@ -91,28 +91,16 @@ export default function ValidacaoPage() {
       <div className='flex flex-1 flex-col space-y-6'>
         <div className='flex items-center gap-3'>
           <ShieldCheck className='h-6 w-6 text-primary' />
-          <h2 className='text-2xl font-bold tracking-tight'>
-            Validacao CIMAT
-          </h2>
+          <h2 className='text-2xl font-bold tracking-tight'>Validacao CIMAT</h2>
         </div>
 
         <Tabs defaultValue='pendentes'>
           <TabsList>
             <TabsTrigger value='pendentes'>Pendentes</TabsTrigger>
-            <TabsTrigger value='scrapers'>Scrapers ISO</TabsTrigger>
-            <TabsTrigger value='dgeg'>Energia DGEG</TabsTrigger>
           </TabsList>
 
           <TabsContent value='pendentes'>
             <GestaoPendentesList />
-          </TabsContent>
-
-          <TabsContent value='scrapers'>
-            <ScraperTab />
-          </TabsContent>
-
-          <TabsContent value='dgeg'>
-            <DgegScraperTab />
           </TabsContent>
         </Tabs>
       </div>
