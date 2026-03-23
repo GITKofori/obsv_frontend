@@ -394,26 +394,10 @@ export default function MapsPage() {
       borderColor: dark ? '#A855F7' : '#4F46E5'
     };
 
-    const targetMunicipios = [
-      'Boticas',
-      'Chaves',
-      'Montalegre',
-      'Ribeira de Pena',
-      'Valpaços',
-      'Vila Pouca de Aguiar'
-    ];
-    const filteredConcelhos = {
-      ...concelhosData,
-      features: concelhosData.features.filter(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (f: any) => targetMunicipios.includes(f.properties?.NAME_2 ?? '')
-      )
-    };
-
     currentMap.addSource('portugal-concelhos', {
       type: 'geojson',
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data: filteredConcelhos as any
+      data: concelhosData as any
     });
 
     currentMap.addLayer({
