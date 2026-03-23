@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 
-import concelhosData from '@/assets/geojson/concelhos.json';
+// GeoJSON loaded at runtime from public/ to avoid bundling issues with standalone builds
 import { createBrowserSupabase } from '@/utils/supabase/client';
 import { TerritorialProfileSheet } from '@/features/map/components/territorial-profile-sheet';
 import { ExecutiveReport } from '@/features/map/components/executive-report';
@@ -184,6 +184,10 @@ export default function MapsPage() {
   // Map choropleth data
   const [mapData, setMapData] = useState<Record<string, MapDataEntry>>({});
 
+  // GeoJSON data (fetched at runtime)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [concelhosData, setConcelhosData] = useState<any>(null);
+
   // Profile sheet state
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileMunicipio, setProfileMunicipio] =
@@ -232,6 +236,14 @@ export default function MapsPage() {
         console.error('Failed to fetch municipios:', err);
       }
     })();
+  }, []);
+
+  // Fetch GeoJSON from public directory
+  useEffect(() => {
+    fetch('/geojson/concelhos.json')
+      .then((res) => res.json())
+      .then(setConcelhosData)
+      .catch((err) => console.error('Failed to load concelhos GeoJSON:', err));
   }, []);
 
   // Fetch choropleth data
@@ -354,7 +366,7 @@ export default function MapsPage() {
 
   // Add GeoJSON layers
   useEffect(() => {
-    if (!map.current || !mapLoaded) return;
+    if (!map.current || !mapLoaded || !concelhosData) return;
 
     const currentMap = map.current;
 
@@ -382,17 +394,16 @@ export default function MapsPage() {
     ];
     const filteredConcelhos = {
       ...concelhosData,
-      features: (concelhosData as { features: unknown[] }).features.filter(
-        (f: unknown) => {
-          const feat = f as { properties: { NAME_2?: string } };
-          return targetMunicipios.includes(feat.properties.NAME_2 ?? '');
-        }
+      features: concelhosData.features.filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (f: any) => targetMunicipios.includes(f.properties?.NAME_2 ?? '')
       )
     };
 
     currentMap.addSource('portugal-concelhos', {
       type: 'geojson',
-      data: filteredConcelhos as Parameters<typeof currentMap.addSource>[1] extends { data: infer D } ? D : never
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: filteredConcelhos as any
     });
 
     currentMap.addLayer({
@@ -417,7 +428,7 @@ export default function MapsPage() {
     });
 
     currentMap.on('click', 'concelhos-fill', handleFeatureClick);
-  }, [mapLoaded, isDarkMode]);
+  }, [mapLoaded, isDarkMode, concelhosData]);
 
   const handleFeatureClick = (e: mapboxgl.MapMouseEvent) => {
     if (e.features && e.features.length > 0) {

@@ -18,11 +18,14 @@ export default function AcceptInvitePage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Supabase automatically exchanges the token from the URL hash
-    // when onAuthStateChange fires with SIGNED_IN event
+    // Check if there's already a session (e.g. token was exchanged before listener registered)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setSessionReady(true);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event) => {
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      (event, session) => {
+        if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
           setSessionReady(true);
         }
       }

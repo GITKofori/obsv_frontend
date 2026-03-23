@@ -79,9 +79,10 @@ export default function AdminUsersPage() {
   }, [supabase]);
 
   useEffect(() => {
+    if (!appUser) return;
     fetchUsers();
     fetchMunicipios();
-  }, [fetchUsers, fetchMunicipios]);
+  }, [fetchUsers, fetchMunicipios, appUser]);
 
   if (appUser && appUser.role !== 'cimat_admin') {
     return (
