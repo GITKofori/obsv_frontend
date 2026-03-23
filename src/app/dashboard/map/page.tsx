@@ -240,7 +240,7 @@ export default function MapsPage() {
 
   // Fetch GeoJSON from public directory
   useEffect(() => {
-    fetch('/geojson/concelhos.json')
+    fetch('/api/geojson/concelhos')
       .then((res) => res.json())
       .then(setConcelhosData)
       .catch((err) => console.error('Failed to load concelhos GeoJSON:', err));
