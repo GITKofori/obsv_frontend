@@ -47,6 +47,6 @@ export async function middleware(req: NextRequest) {
 // Run on all routes except static/next internals and api auth callbacks you might want to skip
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|images|assets|api/webhooks).*)'
+    '/((?!_next/static|_next/image|favicon.ico|images|assets|api/webhooks|auth/callback).*)'
   ]
 };

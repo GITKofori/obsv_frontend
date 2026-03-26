@@ -1,4 +1,3 @@
-// app/auth/confirm/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { createServerSupabase } from '@/utils/supabase/server';

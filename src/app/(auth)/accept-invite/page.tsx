@@ -11,62 +11,95 @@ import { toast } from 'sonner';
 export default function AcceptInvitePage() {
   const router = useRouter();
   const supabase = createBrowserSupabase();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [inviteToken, setInviteToken] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // The invite link arrives with tokens in the URL hash fragment:
-    //   /accept-invite#access_token=...&refresh_token=...&type=invite
-    // @supabase/ssr does NOT auto-detect hash fragments, so we must
-    // parse them and call setSession explicitly.
     const hash = window.location.hash.substring(1);
-    if (hash) {
-      const params = new URLSearchParams(hash);
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-      if (accessToken && refreshToken) {
-        supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        }).then(({ error: sessionError }) => {
-          if (sessionError) {
-            setError('Convite inválido ou expirado.');
-            console.error('setSession error:', sessionError);
-          } else {
-            setSessionReady(true);
-          }
-        });
-        return; // setSession handles the session, no need to check further
-      }
+    if (!hash) {
+      // No hash — check for existing session (e.g. arrived via /auth/callback PKCE flow)
+      supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
+        if (user && !userError) {
+          setSessionReady(true);
+        } else {
+          setError('Link de convite inválido. Peça um novo convite.');
+        }
+      });
+      return;
     }
 
-    // Fallback: check if there's already an active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setSessionReady(true);
-      } else {
-        setError('Link de convite inválido. Peça um novo convite.');
-      }
-    });
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    const type = params.get('type');
+
+    // Full JWT tokens (implicit flow) — set session directly
+    if (accessToken && refreshToken) {
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      }).then(({ error: sessionError }) => {
+        if (sessionError) {
+          setError('Convite inválido ou expirado.');
+          console.error('setSession error:', sessionError);
+        } else {
+          setSessionReady(true);
+        }
+      });
+      return;
+    }
+
+    // Raw OTP token from Supabase email template — needs email to verify
+    if (accessToken && type === 'invite') {
+      setInviteToken(accessToken);
+      setNeedsVerification(true);
+      return;
+    }
+
+    setError('Link de convite inválido. Peça um novo convite.');
   }, [supabase]);
 
-  async function handleSetPassword(e: React.FormEvent) {
+  async function handleActivate(e: React.FormEvent) {
     e.preventDefault();
     if (password.length < 8) {
       setError('A password deve ter pelo menos 8 caracteres');
       return;
     }
     if (password !== confirmPassword) {
-      setError('As passwords nao coincidem');
+      setError('As passwords não coincidem');
       return;
     }
 
     setLoading(true);
     setError('');
     try {
+      // If we have a raw token, verify it first to establish the session
+      if (needsVerification && inviteToken) {
+        if (!email) {
+          setError('Introduza o email para o qual recebeu o convite');
+          setLoading(false);
+          return;
+        }
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          email,
+          token: inviteToken,
+          type: 'invite',
+        });
+        if (verifyError) {
+          setError('Token inválido ou expirado. Peça um novo convite.');
+          console.error('verifyOtp error:', verifyError);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Session is now established — set the password
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw updateError;
       toast.success('Password definida com sucesso!');
@@ -78,7 +111,7 @@ export default function AcceptInvitePage() {
     }
   }
 
-  if (!sessionReady) {
+  if (!sessionReady && !needsVerification) {
     return (
       <div className='flex min-h-screen items-center justify-center'>
         <div className='text-center'>
@@ -104,12 +137,25 @@ export default function AcceptInvitePage() {
     <div className='flex min-h-screen items-center justify-center'>
       <div className='w-full max-w-sm space-y-6 p-6'>
         <div className='space-y-2 text-center'>
-          <h1 className='text-2xl font-bold'>Bem-vindo ao Observatorio do Clima</h1>
+          <h1 className='text-2xl font-bold'>Bem-vindo ao Observatório do Clima</h1>
           <p className='text-sm text-muted-foreground'>
             Defina a sua password para ativar a conta.
           </p>
         </div>
-        <form onSubmit={handleSetPassword} className='space-y-4'>
+        <form onSubmit={handleActivate} className='space-y-4'>
+          {needsVerification && (
+            <div className='space-y-2'>
+              <Label htmlFor='email'>Email</Label>
+              <Input
+                id='email'
+                type='email'
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder='O email para o qual recebeu o convite'
+                required
+              />
+            </div>
+          )}
           <div className='space-y-2'>
             <Label htmlFor='password'>Password</Label>
             <Input
@@ -117,7 +163,7 @@ export default function AcceptInvitePage() {
               type='password'
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder='Minimo 8 caracteres'
+              placeholder='Mínimo 8 caracteres'
               required
             />
           </div>
@@ -135,7 +181,7 @@ export default function AcceptInvitePage() {
             <p className='text-sm text-destructive'>{error}</p>
           )}
           <Button type='submit' className='w-full' disabled={loading}>
-            {loading ? 'A guardar...' : 'Ativar Conta'}
+            {loading ? 'A ativar...' : 'Ativar Conta'}
           </Button>
         </form>
       </div>
