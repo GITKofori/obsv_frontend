@@ -174,7 +174,7 @@ export function ReportModal({
         }),
       };
 
-      await axios.post('/api/protected/pmac/execucao', payload, {
+      await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/protected/pmac/execucao`, payload, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
