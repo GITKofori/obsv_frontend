@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EnergyMixChart } from '@/features/core/components/energy-mix-chart';
 import { SectorEmissionsChart } from '@/features/core/components/sector-emissions-chart';
 import { HistoricalChart } from '@/features/core/components/historical-chart';
-import { OdsBadge } from '@/features/core/components/ods-badge';
 import { Loader2 } from 'lucide-react';
 import {
   Select,
@@ -94,36 +93,34 @@ export default function CorePage() {
 
   const kpis = [
     {
-      label: 'Emissões GEE per capita',
-      value: data?.gee_per_capita != null ? `${data.gee_per_capita.toLocaleString('pt-PT')} tCO₂e/hab` : 'N/D',
-      trend: geeTrend ? { value: geeTrend, label: 'vs 2005' } : null,
-      borderColor: 'border-b-emerald-500',
-      ods: [13],
-      note: null as string | null,
-    },
-    {
-      label: 'Intensidade Energética',
-      value: data?.energy_per_capita != null ? `${data.energy_per_capita.toLocaleString('pt-PT')} MWh/hab` : 'N/D',
+      label: 'Consumo Total de Energia',
+      value: ev ? `${ev.total_mwh.toLocaleString('pt-PT')} MWh` : 'N/D',
       trend: energyTrend ? { value: energyTrend, label: `vs ${earliestYear?.year ?? '—'}` } : null,
       borderColor: 'border-b-blue-500',
-      ods: [7, 12],
-      note: null as string | null,
     },
     {
-      label: 'Intensidade Carbónica',
-      value: 'N/D',
+      label: 'Emissões Totais de GEE',
+      value: data?.geeByVector?.total_tco2
+        ? `${data.geeByVector.total_tco2.toLocaleString('pt-PT')} tCO₂e`
+        : 'N/D',
+      trend: geeTrend ? { value: geeTrend, label: 'vs 2005' } : null,
+      borderColor: 'border-b-emerald-500',
+    },
+    {
+      label: 'Consumo de Energia per capita',
+      value: data?.energy_per_capita != null
+        ? `${data.energy_per_capita.toLocaleString('pt-PT')} MWh/hab`
+        : 'N/D',
       trend: null,
       borderColor: 'border-b-amber-500',
-      ods: [7, 8, 12],
-      note: 'Requer dados PIB',
     },
     {
-      label: 'Produção Renovável Local',
-      value: 'N/D',
+      label: 'Emissões de GEE per capita',
+      value: data?.gee_per_capita != null
+        ? `${data.gee_per_capita.toLocaleString('pt-PT')} tCO₂e/hab`
+        : 'N/D',
       trend: null,
       borderColor: 'border-b-violet-500',
-      ods: [7, 12, 13],
-      note: 'Dados não disponíveis',
     },
   ];
 
@@ -173,8 +170,6 @@ export default function CorePage() {
                     </span>
                   )}
                 </div>
-                {kpi.note && <p className='text-[10px] text-muted-foreground mt-1'>{kpi.note}</p>}
-                <OdsBadge ids={kpi.ods} />
               </CardContent>
             </Card>
           ))}
