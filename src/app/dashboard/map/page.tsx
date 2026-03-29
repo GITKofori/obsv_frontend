@@ -202,6 +202,9 @@ export default function MapsPage() {
 
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const popup = useRef(new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 15 }));
+  const mapDataRef = useRef(mapData);
+  const selectedLayerRef = useRef(selectedLayer);
 
   // Sync with theme
   useEffect(() => {
@@ -270,6 +273,10 @@ export default function MapsPage() {
   useEffect(() => {
     fetchMapData(selectedYear, selectedLayer);
   }, [selectedYear, selectedLayer, fetchMapData]);
+
+  // Keep refs in sync with latest state to avoid stale closures in map event handlers
+  useEffect(() => { mapDataRef.current = mapData; }, [mapData]);
+  useEffect(() => { selectedLayerRef.current = selectedLayer; }, [selectedLayer]);
 
   // Update Mapbox choropleth colors when mapData or selectedLayer changes
   useEffect(() => {
@@ -422,6 +429,34 @@ export default function MapsPage() {
     });
 
     currentMap.on('click', 'concelhos-fill', handleFeatureClick);
+
+    currentMap.on('mousemove', 'concelhos-fill', (e) => {
+      if (!e.features?.length) return;
+      currentMap.getCanvas().style.cursor = 'pointer';
+      const props = e.features[0].properties ?? {};
+      const name = (props.CONCELHO as string) || (props.NAME_2 as string) || '';
+      const data = mapDataRef.current[name];
+      const layer = selectedLayerRef.current;
+
+      let label = '';
+      if (data) {
+        if (layer === 'energia') label = `${data.energia_mwh.toLocaleString('pt-PT')} MWh`;
+        else if (layer === 'emissoes') label = `${data.gee_tco2.toLocaleString('pt-PT')} tCO₂e`;
+        else label = `${data.medidas_count} medidas`;
+      } else {
+        label = 'Sem dados';
+      }
+
+      popup.current
+        .setLngLat(e.lngLat)
+        .setHTML(`<strong>${name}</strong><br/>${label}`)
+        .addTo(currentMap);
+    });
+
+    currentMap.on('mouseleave', 'concelhos-fill', () => {
+      currentMap.getCanvas().style.cursor = '';
+      popup.current.remove();
+    });
   }, [mapLoaded, concelhosData]);
 
   const handleFeatureClick = (e: mapboxgl.MapMouseEvent) => {
