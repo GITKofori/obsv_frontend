@@ -25,6 +25,9 @@ import { TipoMeta } from 'types/pmac';
 
 const TIPOS_META: TipoMeta[] = ['Contador', 'Marcos', 'Binária'];
 
+const UNIDADES_COMUNS = ['%', 'un', 'km', 'ton CO2e', 'MWh', 'ha', 'kWh', 'tep', 'm²', 'm³', 'kg', 'L', 'N.º', '€'] as const;
+const OUTRA_VALUE = '__outra__';
+
 interface IndicadorFormDialogProps {
   medidaId: string;
   medidaDesignacao: string;
@@ -55,6 +58,7 @@ export function IndicadorFormDialog({
   onSuccess,
 }: IndicadorFormDialogProps) {
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [unidadeSelect, setUnidadeSelect] = useState<string>('');
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -62,6 +66,7 @@ export function IndicadorFormDialog({
   useEffect(() => {
     if (open) {
       setForm(emptyForm);
+      setUnidadeSelect('');
       setErrors({});
       setSubmitError(null);
     }
@@ -144,16 +149,41 @@ export function IndicadorFormDialog({
 
           {/* Unidade */}
           <div className='space-y-1'>
-            <Label htmlFor='ind-unidade'>
+            <Label>
               Unidade <span className='text-destructive'>*</span>
             </Label>
-            <Input
-              id='ind-unidade'
-              placeholder='ex: MWh, tCO2e, %'
-              value={form.unidade}
-              onChange={(e) => setForm((p) => ({ ...p, unidade: e.target.value }))}
-              className={errors.unidade ? 'border-destructive' : ''}
-            />
+            <Select
+              value={unidadeSelect}
+              onValueChange={(v) => {
+                setUnidadeSelect(v);
+                if (v !== OUTRA_VALUE) {
+                  setForm((p) => ({ ...p, unidade: v }));
+                } else {
+                  setForm((p) => ({ ...p, unidade: '' }));
+                }
+              }}
+            >
+              <SelectTrigger className={errors.unidade && !unidadeSelect ? 'border-destructive' : ''}>
+                <SelectValue placeholder='Selecionar unidade…' />
+              </SelectTrigger>
+              <SelectContent>
+                {UNIDADES_COMUNS.map((u) => (
+                  <SelectItem key={u} value={u}>
+                    {u}
+                  </SelectItem>
+                ))}
+                <SelectItem value={OUTRA_VALUE}>Outra…</SelectItem>
+              </SelectContent>
+            </Select>
+            {unidadeSelect === OUTRA_VALUE && (
+              <Input
+                id='ind-unidade-custom'
+                placeholder='Escreva a unidade…'
+                value={form.unidade}
+                onChange={(e) => setForm((p) => ({ ...p, unidade: e.target.value }))}
+                className={errors.unidade ? 'border-destructive' : ''}
+              />
+            )}
             {errors.unidade && <p className='text-xs text-destructive'>{errors.unidade}</p>}
           </div>
 
