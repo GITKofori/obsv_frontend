@@ -14,9 +14,11 @@ const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
 interface CoreSummary {
   latestYear: number | null;
   baseline2005_tco2: number;
+  municipio_baseline_2005: number | null;
   energyByVector: { electricity_mwh: number; gas_mwh: number; oil_mwh: number; total_mwh: number };
   geeByVector: { electricity_tco2: number; gas_tco2: number; oil_tco2: number; total_tco2: number };
   energyByYear: { year: number; electricity_mwh: number | null; gas_mwh: number | null; oil_mwh: number | null }[];
+  geeByYear: { year: number; electricity_tco2: number; gas_tco2: number; oil_tco2: number; total_tco2: number }[];
 }
 
 interface PmacProgress {
@@ -180,7 +182,8 @@ export default function TrajetoriaPage() {
           <CardContent>
             <TrajectoryChart
               baseline2005={baseline2005}
-              energyByYear={core?.energyByYear ?? []}
+              municipioBaseline2005={core?.municipio_baseline_2005 ?? null}
+              geeByYear={core?.geeByYear ?? []}
             />
           </CardContent>
         </Card>

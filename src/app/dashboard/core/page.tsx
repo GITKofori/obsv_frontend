@@ -6,6 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EnergyMixChart } from '@/features/core/components/energy-mix-chart';
 import { SectorEmissionsChart } from '@/features/core/components/sector-emissions-chart';
 import { HistoricalChart } from '@/features/core/components/historical-chart';
+import { EmissionsByVectorChart } from '@/features/core/components/emissions-by-vector-chart';
+import { EmissionsBySectorChart } from '@/features/core/components/emissions-by-sector-chart';
+import { EmissionsHistoricalChart } from '@/features/core/components/emissions-historical-chart';
 import { Loader2 } from 'lucide-react';
 import {
   Select,
@@ -30,6 +33,8 @@ interface CoreSummary {
   geeByVector: { electricity_tco2: number; gas_tco2: number; oil_tco2: number; total_tco2: number };
   energyByYear: { year: number; electricity_mwh: number | null; gas_mwh: number | null; oil_mwh: number | null }[];
   energyBySector: { sector: string; mwh: number }[];
+  geeBySector: { sector: string; tco2: number }[];
+  geeByYear: { year: number; electricity_tco2: number; gas_tco2: number; oil_tco2: number; total_tco2: number }[];
   lastSync: string | null;
 }
 
@@ -39,6 +44,7 @@ export default function CorePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'consumos' | 'emissoes'>('consumos');
 
   useEffect(() => {
     async function fetchData() {
@@ -75,6 +81,13 @@ export default function CorePage() {
     { name: 'Eletricidade', value: ev.electricity_mwh },
     { name: 'Gás Natural',  value: ev.gas_mwh },
     { name: 'Petróleo',     value: ev.oil_mwh },
+  ].filter(d => d.value > 0) : [];
+
+  const gv = data?.geeByVector;
+  const geeByVectorData = gv ? [
+    { name: 'Eletricidade', value: gv.electricity_tco2 },
+    { name: 'Gás Natural', value: gv.gas_tco2 },
+    { name: 'Petróleo', value: gv.oil_tco2 },
   ].filter(d => d.value > 0) : [];
 
   const geeTrend = data?.baseline2005_tco2 && data?.geeByVector?.total_tco2
@@ -175,54 +188,104 @@ export default function CorePage() {
           ))}
         </div>
 
-        {availableYears.length > 1 && (
+        <div className='flex items-center gap-4 flex-wrap'>
+          {availableYears.length > 1 && (
+            <div className='flex items-center gap-2'>
+              <span className='text-sm text-muted-foreground'>Ano:</span>
+              <Select
+                value={String(selectedYear ?? data?.latestYear ?? '')}
+                onValueChange={v => setSelectedYear(Number(v))}
+              >
+                <SelectTrigger className='w-24'><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {availableYears.map(y => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className='flex items-center gap-2'>
-            <span className='text-sm text-muted-foreground'>Ano:</span>
-            <Select
-              value={String(selectedYear ?? data?.latestYear ?? '')}
-              onValueChange={v => setSelectedYear(Number(v))}
-            >
-              <SelectTrigger className='w-24'><SelectValue /></SelectTrigger>
+            <span className='text-sm text-muted-foreground'>Visualização:</span>
+            <Select value={viewMode} onValueChange={(v) => setViewMode(v as 'consumos' | 'emissoes')}>
+              <SelectTrigger className='w-36'><SelectValue /></SelectTrigger>
               <SelectContent>
-                {availableYears.map(y => (
-                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                ))}
+                <SelectItem value='consumos'>Consumos</SelectItem>
+                <SelectItem value='emissoes'>Emissões</SelectItem>
               </SelectContent>
             </Select>
           </div>
-        )}
-
-        <div className='grid gap-4 md:grid-cols-2'>
-          <Card>
-            <CardHeader>
-              <CardTitle className='text-base'>Mix de Consumo Final de Energia por Fonte</CardTitle>
-              <p className='text-sm text-muted-foreground'>Distribuição do consumo energético em MWh</p>
-            </CardHeader>
-            <CardContent>
-              <EnergyMixChart data={mixData} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className='text-base'>Consumo por Setor / Tipo de Consumidor</CardTitle>
-              <p className='text-sm text-muted-foreground'>Top 10 setores em MWh — {data?.latestYear}</p>
-            </CardHeader>
-            <CardContent>
-              <SectorEmissionsChart data={data?.energyBySector ?? []} />
-            </CardContent>
-          </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Evolução Histórica de Consumo Final de Energia</CardTitle>
-            <p className='text-sm text-muted-foreground'>{`MWh por vetor energético — ${data?.energyByYear?.[0]?.year ?? 2010}–${data?.energyByYear?.at(-1)?.year ?? new Date().getFullYear()}`}</p>
-          </CardHeader>
-          <CardContent>
-            <HistoricalChart data={data?.energyByYear ?? []} />
-          </CardContent>
-        </Card>
+        {viewMode === 'consumos' ? (
+          <>
+            <div className='grid gap-4 md:grid-cols-2'>
+              <Card>
+                <CardHeader>
+                  <CardTitle className='text-base'>Mix de Consumo Final de Energia por Fonte</CardTitle>
+                  <p className='text-sm text-muted-foreground'>Distribuição do consumo energético em MWh</p>
+                </CardHeader>
+                <CardContent>
+                  <EnergyMixChart data={mixData} />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className='text-base'>Consumo por Setor de Atividade</CardTitle>
+                  <p className='text-sm text-muted-foreground'>MWh por setor PMAC — {data?.latestYear}</p>
+                </CardHeader>
+                <CardContent>
+                  <SectorEmissionsChart data={data?.energyBySector ?? []} />
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Evolução Histórica de Consumo Final de Energia</CardTitle>
+                <p className='text-sm text-muted-foreground'>{`MWh por vetor energético — ${data?.energyByYear?.[0]?.year ?? 2010}–${data?.energyByYear?.at(-1)?.year ?? new Date().getFullYear()}`}</p>
+              </CardHeader>
+              <CardContent>
+                <HistoricalChart data={data?.energyByYear ?? []} />
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <div className='grid gap-4 md:grid-cols-2'>
+              <Card>
+                <CardHeader>
+                  <CardTitle className='text-base'>Emissões por Vetor Energético</CardTitle>
+                  <p className='text-sm text-muted-foreground'>Distribuição de emissões GEE em tCO₂e</p>
+                </CardHeader>
+                <CardContent>
+                  <EmissionsByVectorChart data={geeByVectorData} />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className='text-base'>Emissões por Setor de Atividade</CardTitle>
+                  <p className='text-sm text-muted-foreground'>tCO₂e por setor PMAC — {data?.latestYear}</p>
+                </CardHeader>
+                <CardContent>
+                  <EmissionsBySectorChart data={data?.geeBySector ?? []} />
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Evolução Histórica de Emissões de GEE</CardTitle>
+                <p className='text-sm text-muted-foreground'>{`tCO₂e por vetor energético — ${data?.geeByYear?.[0]?.year ?? 2010}–${data?.geeByYear?.at(-1)?.year ?? new Date().getFullYear()}`}</p>
+              </CardHeader>
+              <CardContent>
+                <EmissionsHistoricalChart data={data?.geeByYear ?? []} />
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </PageContainer>
   );
