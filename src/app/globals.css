@@ -125,3 +125,64 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Mapbox GL popup styles (avoids importing full mapbox-gl.css which conflicts with Tailwind) */
+.mapboxgl-popup {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  will-change: transform;
+  pointer-events: none;
+  z-index: 50;
+}
+.mapboxgl-popup-anchor-left {
+  flex-direction: row;
+}
+.mapboxgl-popup-anchor-right {
+  flex-direction: row-reverse;
+}
+.mapboxgl-popup-anchor-top .mapboxgl-popup-tip,
+.mapboxgl-popup-anchor-top-left .mapboxgl-popup-tip,
+.mapboxgl-popup-anchor-top-right .mapboxgl-popup-tip {
+  border-bottom-color: hsl(var(--popover));
+  border-top: none;
+}
+.mapboxgl-popup-anchor-bottom,
+.mapboxgl-popup-anchor-bottom-left,
+.mapboxgl-popup-anchor-bottom-right {
+  flex-direction: column-reverse;
+}
+.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip,
+.mapboxgl-popup-anchor-bottom-left .mapboxgl-popup-tip,
+.mapboxgl-popup-anchor-bottom-right .mapboxgl-popup-tip {
+  border-top-color: hsl(var(--popover));
+  border-bottom: none;
+}
+.mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
+  border-right-color: hsl(var(--popover));
+  border-left: none;
+}
+.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
+  border-left-color: hsl(var(--popover));
+  border-right: none;
+}
+.mapboxgl-popup-tip {
+  width: 0;
+  height: 0;
+  border: 6px solid transparent;
+  z-index: 1;
+}
+.mapboxgl-popup-content {
+  position: relative;
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border-radius: 6px;
+  padding: 8px 12px;
+  pointer-events: auto;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
